@@ -107,10 +107,22 @@ jobs:
       - run: python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
       - run: python -m pip install .
       - name: Detect script
-        shell: pwsh
         run: |
-          $s = Join-Path $env:pythonLocation 'Scripts\open-webui-script.py'
-          echo "OWUI_SCRIPT=$s" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          script=$(python - <<'PY'
+          import shutil, pathlib
+          path = shutil.which('open-webui')
+          if not path:
+              raise SystemExit('entry script not found')
+          p = pathlib.Path(path)
+          if p.suffix == '.exe':
+              p = p.with_name(p.stem + '-script.py')
+          if not p.exists():
+              raise SystemExit(f'{p} not found')
+          print(p)
+          PY
+          )
+          echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
+        shell: bash
       - name: PyInstaller
         shell: pwsh
         run: |
