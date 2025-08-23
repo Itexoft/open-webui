@@ -12,7 +12,7 @@ jobs:
         include:
           - os: ubuntu-latest
             pathsep: ':'
-          - os: macos-latest
+          - os: macos-14
             pathsep: ':'
           - os: windows-latest
             pathsep: ';'
