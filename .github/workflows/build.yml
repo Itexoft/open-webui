@@ -9,7 +9,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            pathsep: ':'
+          - os: macos-14
+            pathsep: ':'
+          - os: windows-latest
+            pathsep: ';'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,24 +24,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.11
-      - run: python -m pip install --upgrade pip build
-      - run: python -m build .
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install build pyinstaller
+      - run: python -m pip install .
+      - run: |
+          python - <<'PY'
+          import pathlib, open_webui, subprocess, os
+          base = pathlib.Path(open_webui.__file__).resolve().parent
+          data_path = base/'frontend'
+          sep = os.environ['PATHSEP']
+          subprocess.run([
+              'pyinstaller',
+              '-m', 'open_webui',
+              '--name', 'open-webui',
+              '--onefile',
+              '--distpath', 'dist-bin',
+              '--workpath', 'build-bin',
+              '--add-data', f'{data_path}{sep}open_webui/frontend'
+          ], check=True)
+          PY
+        env:
+          PATHSEP: ${{ matrix.pathsep }}
+        shell: bash
       - uses: actions/upload-artifact@v4
         with:
           name: open-webui-${{ matrix.os }}
-          path: dist/*
-      - if: matrix.os == 'ubuntu-latest'
-        uses: docker/setup-qemu-action@v3
-      - if: matrix.os == 'ubuntu-latest'
-        uses: docker/setup-buildx-action@v3
-      - if: matrix.os == 'ubuntu-latest'
-        run: >
-          docker buildx build --platform linux/amd64,linux/arm64 -o
-          type=oci,dest=open-webui.oci .
-      - if: matrix.os == 'ubuntu-latest'
-        run: gzip open-webui.oci
-      - if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: open-webui-docker
-          path: open-webui.oci.gz
+          path: dist-bin/*
