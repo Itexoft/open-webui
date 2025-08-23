@@ -114,7 +114,7 @@ jobs:
           if not path:
               raise SystemExit('entry script not found')
           p = pathlib.Path(path)
-          if p.suffix == '.exe':
+          if p.suffix.lower() == '.exe':
               p = p.with_name(p.stem + '-script.py')
           if not p.exists():
               raise SystemExit(f'{p} not found')
