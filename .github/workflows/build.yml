@@ -22,7 +22,10 @@ jobs:
         with:
           python-version: 3.11
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
+      - run: |
+          python -m pip install build \
+          "pyinstaller>=6.15" \
+          pyinstaller-hooks-contrib
       - run: python -m pip install .
       - name: Detect script
         run: |
@@ -104,21 +107,18 @@ jobs:
         with:
           python-version: 3.11
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
+      - run: |
+          python -m pip install build \
+          "pyinstaller>=6.15" \
+          pyinstaller-hooks-contrib
       - run: python -m pip install .
       - name: Detect script
         run: |
           script=$(python - <<'PY'
-          import shutil, pathlib
-          path = shutil.which('open-webui')
-          if not path:
-              raise SystemExit('entry script not found')
-          p = pathlib.Path(path)
-          if p.suffix.lower() == '.exe':
-              p = p.with_name(p.stem + '-script.py')
-          if not p.exists():
-              raise SystemExit(f'{p} not found')
-          print(p)
+            import open_webui, pathlib
+            p = pathlib.Path('tmp.py')
+            p.write_text('from open_webui import app\napp()')
+            print(p.resolve())
           PY
           )
           echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
