@@ -33,12 +33,13 @@ jobs:
       - run: |
           python - <<'PY'
           import pathlib, open_webui, subprocess, os
-          base = pathlib.Path(open_webui.__file__).resolve().parent
+          script_path = pathlib.Path(open_webui.__file__).resolve()
+          base = script_path.parent
           data_path = base/'frontend'
           sep = os.environ['PATHSEP']
           subprocess.run([
               'pyinstaller',
-              '-m', 'open_webui',
+              str(script_path),
               '--name', 'open-webui',
               '--onefile',
               '--distpath', 'dist-bin',
