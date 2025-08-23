@@ -4,6 +4,9 @@ name: Build
 'on':
   workflow_dispatch:
 
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
