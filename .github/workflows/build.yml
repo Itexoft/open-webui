@@ -27,12 +27,12 @@ jobs:
       - name: Detect script
         run: |
           script=$(python - <<'PY'
-import shutil, pathlib
-path = shutil.which('open-webui')
-if not path:
-    raise SystemExit('entry script not found')
-print(pathlib.Path(path))
-PY
+          import shutil, pathlib
+          path = shutil.which('open-webui')
+          if not path:
+              raise SystemExit('entry script not found')
+          print(pathlib.Path(path))
+          PY
           )
           echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
         shell: bash
