@@ -12,43 +12,47 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            pathsep: ':'
-          - os: macos-14
-            pathsep: ':'
-          - os: windows-latest
-            pathsep: ';'
+        os: [ubuntu-latest, macos-14, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.10.0'
       - uses: actions/setup-python@v5
         with:
           python-version: 3.11
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install build pyinstaller
+      - run: python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
       - run: python -m pip install .
       - run: |
           python - <<'PY'
-          import pathlib, open_webui, subprocess, os
-          script_path = pathlib.Path(open_webui.__file__).resolve()
-          base = script_path.parent
-          data_path = base/'frontend'
-          sep = os.environ['PATHSEP']
+          import os, sys, subprocess, shutil, pathlib
+          if os.name == 'nt':
+              script = pathlib.Path(sys.executable).with_name('Scripts') / 'open-webui-script.py'
+          else:
+              path = shutil.which('open-webui')
+              if not path:
+                  raise SystemExit('entry script not found')
+              script = pathlib.Path(path)
           subprocess.run([
               'pyinstaller',
-              str(script_path),
+              str(script),
               '--name', 'open-webui',
               '--onefile',
               '--distpath', 'dist-bin',
               '--workpath', 'build-bin',
-              '--add-data', f'{data_path}{sep}open_webui/frontend'
+              '--clean',
+              '--log-level=DEBUG',
+              '--noupx',
+              '--collect-all', 'open_webui',
+              '--collect-all', 'uvicorn',
+              '--collect-all', 'starlette',
+              '--collect-all', 'anyio',
+              '--collect-all', 'websockets',
+              '--collect-all', 'jinja2',
+              '--hidden-import', 'uvicorn.logging'
           ], check=True)
           PY
-        env:
-          PATHSEP: ${{ matrix.pathsep }}
         shell: bash
       - uses: actions/upload-artifact@v4
         with:
