@@ -8,10 +8,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-14]
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,7 +48,7 @@ jobs:
             --copy-metadata open_webui \
             --copy-metadata uvicorn \
             --hidden-import=uvicorn.logging \
-            --add-data CHANGELOG.md:open_webui/CHANGELOG.md \
+            --add-data CHANGELOG.md:open_webui \
             --collect-data open_webui
           status=$?
           if [ $status -ne 0 ] && [ "$RUNNER_OS" = "Linux" ]; then
@@ -67,60 +64,12 @@ jobs:
               --copy-metadata open_webui \
               --copy-metadata uvicorn \
               --hidden-import=uvicorn.logging \
-              --add-data CHANGELOG.md:open_webui/CHANGELOG.md \
+              --add-data CHANGELOG.md:open_webui \
               --collect-data open_webui
           fi
         shell: bash
       - run: du -sh dist-bin || true
       - uses: actions/upload-artifact@v4
         with:
-          name: open-webui-${{ matrix.os }}
-          path: dist-bin/*
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.10.0'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: python -m pip install --upgrade pip
-      - run: |
-          python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
-      - run: python -m pip install .
-      - name: Detect script
-        run: |
-          script=$(python - <<'PY'
-          import pathlib
-          p = pathlib.Path('owui_entry.py')
-          p.write_text('from open_webui import app\napp()')
-          print(p.resolve())
-          PY
-          )
-          echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
-        shell: bash
-      - name: PyInstaller
-        shell: pwsh
-        run: |
-          pyinstaller "$env:OWUI_SCRIPT" `
-            --name open-webui `
-            --onefile `
-            --distpath dist-bin `
-            --workpath build-bin `
-            --clean `
-            --noconfirm `
-            --log-level=WARN `
-            --copy-metadata open_webui `
-            --copy-metadata uvicorn `
-            --hidden-import=uvicorn.logging `
-            --add-data CHANGELOG.md;open_webui/CHANGELOG.md `
-            --collect-data open_webui
-      - shell: pwsh
-        run: Get-ChildItem dist-bin | Format-Table Name,Length
-      - uses: actions/upload-artifact@v4
-        with:
-          name: open-webui-windows-exe
+          name: open-webui-macos
           path: dist-bin/*
