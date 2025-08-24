@@ -17,29 +17,67 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - run: python -m pip install --upgrade pip
       - run: |
-          python -m pip install build "pyinstaller>=6.15" pyinstaller-hooks-contrib
-          python -m pip install "passlib[bcrypt]" bcrypt
+          python -m pip install "pyinstaller>=6.15" pyinstaller-hooks-contrib build
+          python -m pip install "passlib[bcrypt]" "bcrypt==4.0.1"
           python -m pip install .
+
       - name: Detect paths
+        shell: bash
         run: |
           script=$(python - <<'PY'
           import shutil, pathlib
           p = shutil.which('open-webui')
-          if not p:
-              raise SystemExit('entry script not found')
+          if not p: raise SystemExit('entry script not found')
           print(pathlib.Path(p))
           PY
-                    )
-                    echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
-                    mig=$(python - <<'PY'
+          )
+          echo "OWUI_SCRIPT=$script" >> $GITHUB_ENV
+
+          pkg=$(python - <<'PY'
           import pathlib, open_webui
-          print((pathlib.Path(open_webui.__file__).resolve().parent / "internal" / "migrations").as_posix())
+          print(pathlib.Path(open_webui.__file__).resolve().parent.as_posix())
+          PY
+          )
+          echo "OWUI_PKG=$pkg" >> $GITHUB_ENV
+
+          mig=$(python - <<'PY'
+          import pathlib, open_webui
+          pkg = pathlib.Path(open_webui.__file__).resolve().parent
+          cands = [pkg/'migrations', pkg/'internal'/'migrations', pkg.parent/'backend'/'migrations']
+          for c in cands:
+              if c.exists():
+                  print(c.as_posix())
+                  break
+          else:
+              print("")
           PY
           )
           echo "OWUI_MIG=$mig" >> $GITHUB_ENV
+
+          alembic=$(python - <<'PY'
+          import pathlib, open_webui
+          p = pathlib.Path(open_webui.__file__).resolve().parent/'alembic.ini'
+          print(p.as_posix() if p.exists() else "")
+          PY
+          )
+          echo "OWUI_ALEMBIC=$alembic" >> $GITHUB_ENV
+
+      - name: Sanity before pack
+        run: |
+          python - <<'PY'
+          import pathlib, open_webui, passlib, bcrypt
+          pkg = pathlib.Path(open_webui.__file__).resolve().parent
+          print("pkg", pkg)
+          print("bcrypt", bcrypt.__version__, "passlib", passlib.__version__)
+          print("has alembic.ini", (pkg/"alembic.ini").exists())
+          print("has migrations", (pkg/"migrations").exists() or (pkg/"internal"/"migrations").exists())
+          PY
+
       - name: PyInstaller
+        shell: bash
         run: |
           pyinstaller "$OWUI_SCRIPT" \
             --name open-webui \
@@ -51,17 +89,20 @@ jobs:
             --strip \
             --log-level=WARN \
             --copy-metadata open_webui \
-            --copy-metadata passlib \
             --copy-metadata uvicorn \
+            --copy-metadata passlib \
+            --copy-metadata alembic \
             --hidden-import=passlib.handlers.bcrypt \
             --hidden-import=bcrypt \
             --hidden-import=uvicorn.logging \
             --collect-submodules passlib.handlers \
-            --collect-submodules open_webui.internal.migrations \
-            --add-data "$OWUI_MIG:open_webui/internal/migrations" \
-            --add-data CHANGELOG.md:open_webui \
-            --collect-data open_webui
+            --collect-submodules open_webui.migrations \
+            --collect-data open_webui \
+            ${OWUI_MIG:+--add-data "$OWUI_MIG:open_webui/migrations"} \
+            ${OWUI_ALEMBIC:+--add-data "$OWUI_ALEMBIC:open_webui"}
+
       - run: du -sh dist-bin || true
+
       - uses: actions/upload-artifact@v4
         with:
           name: open-webui-macos
