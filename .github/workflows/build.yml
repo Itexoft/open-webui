@@ -51,6 +51,7 @@ jobs:
             --copy-metadata open_webui \
             --copy-metadata uvicorn \
             --hidden-import=uvicorn.logging \
+            --add-data CHANGELOG.md:open_webui/CHANGELOG.md \
             --collect-data open_webui
           status=$?
           if [ $status -ne 0 ] && [ "$RUNNER_OS" = "Linux" ]; then
@@ -66,6 +67,7 @@ jobs:
               --copy-metadata open_webui \
               --copy-metadata uvicorn \
               --hidden-import=uvicorn.logging \
+              --add-data CHANGELOG.md:open_webui/CHANGELOG.md \
               --collect-data open_webui
           fi
         shell: bash
@@ -114,6 +116,7 @@ jobs:
             --copy-metadata open_webui `
             --copy-metadata uvicorn `
             --hidden-import=uvicorn.logging `
+            --add-data CHANGELOG.md;open_webui/CHANGELOG.md `
             --collect-data open_webui
       - shell: pwsh
         run: Get-ChildItem dist-bin | Format-Table Name,Length
